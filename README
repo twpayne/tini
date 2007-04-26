@@ -1,0 +1,200 @@
+tini - download tracklogs from Brauniger and Flytec flight recorders
+Copyright (C) 2007 Tom Payne
+
+
+
+INTRODUCTION
+
+tini is command-line program for downloading tracklogs from Flytec and
+Brauniger flight recorders.  Its goal is to be simple, functional and
+portable with no external dependencies.
+
+The following recorders (FRs) are supported:
+    Brauniger Compeo and Competino
+    Flytec 5020 and 5030
+
+
+
+QUICK START
+
+Type "make" to build the software and "make install" (as root) to install it.
+
+To download all the tracks from your FR into the current directory, run:
+	$ tini
+If this doesn't work then check the "TROUBLESHOOTING" section below.
+
+By default, tini assumes that your FR is attached to /dev/ttyS0.  You can
+specify a different device using the -d option, for example:
+	$ tini -d /dev/ttyUSB0
+USB-to-serial converters often appear as /dev/ttyUSB0 or /dev/tts/USB0.  To
+avoid typing this every time you can set the TINO_DEVICE environment variable
+to point to the device.  For example (in bash):
+	$ export TINO_DEVICE=/dev/ttyUSB0
+
+For a full list of available commands and options, run:
+	$ tini -h
+
+
+
+COMMANDS
+
+The default command is download.
+
+do, download [LIST] ...
+	This command will download all new tracklogs from the device to the
+	current directory.  It will not overwrite any existing files unless
+	you specify the -o (--overwrite) option.  You can specify a list of
+	tracklogs to download with the optional LIST argument(s) which is a
+	comma-separated list of tracklog numbers or ranges like 1,3-4,6-.  For
+	example, to download only the most recent flight, run:
+		tini download 1
+
+li, list
+	This command lists all the tracklogs stored in the device.  The output
+	is in YAML format.
+
+id
+	This command prints the instrument identifier, pilot name, serial
+	number and software version to the standard output in YAML format.
+
+ig, igc
+	This command prints the IGC file of the currently selected flight on
+	the FR to the standard output.  You must first select a flight on the
+	FR, otherwise there will be no output.  From the main screen hold down
+	Menu / F2 until the "Main Setup Menu" appears.  Select "Flight
+	Memory", use the up and down arrow keys to choose a flight, and press
+	Enter to select it.
+
+
+
+OPTIONS
+
+-h, --help
+	Print a brief summary of options and commands and quit.
+
+-D, --directory=DIRECTORY
+	Download tracklogs to this directory.
+
+-d, --device=DEVICE
+	Set the serial port device.
+
+-o, --overwrite
+	Re-download and overwrite existing IGC files.  This option can be
+	dangerous. Make sure that you understand the BUGS section below before
+	using it.
+
+-q, --quiet
+	Do not print status messages to stderr.
+
+-l, --log=FILENAME
+	Log all communication with the device to FILENAME (use "-" for the
+	standard output).  This is useful for troubleshooting or if you're
+	curious about to what happens behind the scenes.
+
+
+
+TROUBLESHOOTING
+
+If tini doesn't work then please ensure that you are doing the following in
+exactly this order:
+
+1. Switch on the FR.
+
+2. On the FR, go to the "Main Setup Menu" (hold down F2 / Menu).
+
+3. Optionally, if you want to use the "igc" command then select the flight you
+want to download by choosing "Flight Memory" from the "Main Setup Menu", using
+the up and down arrow keys to choose the flight and pressing Enter to display
+its summary.
+
+4. Plug the serial cable into the FR and the computer.
+
+5. Check that the device is correct (typically /dev/ttyS0 is the first serial
+port, /dev/ttyS1 is the second serial port, and /dev/ttyUSB0 or /dev/tts/USB0
+is the USB-to-serial converter).
+
+6. Check that you (as a user) has permission to access the device you
+identified in step 5.  If you get "Permission denied" errors then you do not
+have permission and will have to check your distribution's documentation or
+ask your friendly Linux expert to find out how to grant it to yourself.
+Alternatively you can follow the instructions in "ADVANCED USAGE" below.  As a
+workaround you can run tini as root but this is not recommended.
+
+7. Finally, run tini:
+	$ tini -d DEVICE
+where DEVICE is the device that you identified in step 5.  If you still have
+problems then wait one minute and try again (sometimes the FR can still be
+transmitting data in response to a previously interrupted command), or try
+using specifying "-l-" on the command line which shows all communication
+between tini and your FR on the standard output.
+
+
+
+ADVANCED USAGE
+
+If, instead of granting permissions to users to access the serial ports, you
+can grant access to the tini program instead.  Typically the serial port
+devices are readable/writeable by the uucp group:
+	$ ls -l /dev/ttyS*
+	crw-rw---- 1 root uucp 4, 64 2007-04-25 20:04 /dev/ttyS0
+	...
+You can set the group sticky bit on the tini program make it always run as
+this group using the following commands (as root):
+	# chgrp `stat --printf=%g /dev/ttyS0` /usr/local/bin/tini
+	# chown g+s /usr/local/bin/tini
+
+
+
+BUGS
+
+The IGC filenames are generated according to the IGC specification.  The IGC
+filename includes the date and the flight number on that date.  In special
+circumstances tini will generate the same filename for different flights which
+will lead to either the first flight being overwritten and lost or the second
+flight not being downloaded and consequently lost.  This will happen only if
+ALL of the following are true:
+1. You record a tracklog during a UTC day.
+2. You download it with tini.
+3. You delete it from your FR.
+4. You record another tracklog on the same UTC day.
+5. You attempt to download the new tracklog with tini.
+There are two workarounds:
+1. Only download your flights at the end of the UTC day, for European users
+this is easy since the UTC day corresponds closely to the actual day.
+2. Don't delete tracklogs from your FR from the current UTC day.  Basically,
+European users should not be affected unless they make several flights a day,
+download them at lunchtime and delete them immediately after downloading.
+American, Asian and Australian users need to be a bit more careful!
+
+To fix this bug in software, tini would have to match tracklogs downloaded
+already with those currently on the FR to determine whether each had been
+downloaded and its correct filename.  This possibly involves moving and
+renaming existing tracklogs.  Although not impossible, it is tricky to get
+right and therefore in the interest of simplicity this feature has not been
+implemented in this version.
+
+
+
+AUTHOR
+
+Tom Payne <twpayne@gmail.com>
+
+
+
+LICENSE
+
+This program is free software; you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation; either version 2 of the License, or (at your option) any later
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT
+ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more
+details.
+
+You should have received a copy of the GNU General Public License along with
+this program; if not, write to the Free Software Foundation, Inc., 51 Franklin
+St, Fifth Floor, Boston, MA  02110-1301  USA
+
+# vim: set spell spelllang=en textwidth=78:
