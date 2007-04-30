@@ -28,7 +28,7 @@ tarball: $(RAGEL_SRCS)
 
 install: $(BINS)
 	@echo "  INSTALL tini"
-	@$(INSTALL) -D -m 755 tini $(PREFIX)/bin
+	@$(INSTALL) -D -m 755 tini $(PREFIX)/bin/tini
 
 tini: $(OBJS)
 
