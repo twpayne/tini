@@ -1,4 +1,5 @@
 PREFIX=/usr/local
+DEVICE=/dev/ttyS0
 
 CC=gcc
 CFLAGS=-O2 -Wall -Wextra -Wno-unused
@@ -15,7 +16,7 @@ OBJS=$(SRCS:%.c=%.o)
 BINS=tini
 DOCS=README COPYING
 
-.PHONY: all clean install reallyclean tarball
+.PHONY: all clean setgidinstall install reallyclean tarball
 .PRECIOUS: $(RAGEL_SRCS)
 
 all: $(BINS)
@@ -25,6 +26,12 @@ tarball: $(RAGEL_SRCS)
 	cp Makefile $(SRCS) $(HEADERS) $(RAGELS) $(DOCS) tini-$(VERSION)
 	tar -czf tini-$(VERSION).tar.gz tini-$(VERSION)
 	rm -Rf tini-$(VERSION)
+
+setgidinstall: install
+	@echo "  CHGRP   tini"
+	@chgrp --reference=$(DEVICE) $(PREFIX)/bin/tini
+	@echo "  CHMOD   tini"
+	@chmod g+s $(PREFIX)/bin/tini
 
 install: $(BINS)
 	@echo "  INSTALL tini"

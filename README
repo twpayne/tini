@@ -139,9 +139,11 @@ devices are readable/writeable by the uucp group:
 	crw-rw---- 1 root uucp 4, 64 2007-04-25 20:04 /dev/ttyS0
 	...
 You can set the group sticky bit on the tini program make it always run as
-this group using the following commands (as root):
-	# chgrp `stat --printf=%g /dev/ttyS0` /usr/local/bin/tini
-	# chown g+s /usr/local/bin/tini
+this group.  To do this, run (as root):
+	# make setgidinstall
+You can override the default serial port device with the DEVICE variable,
+e.g.:
+	# make DEVICE=/dev/ttyUSB0 setgidinstall
 
 
 
