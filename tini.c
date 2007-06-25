@@ -223,7 +223,7 @@ int main(int argc, char *argv[])
     program_name = strrchr(argv[0], '/');
     program_name = program_name ? program_name + 1 : argv[0];
 
-    device = getenv("TINO_DEVICE");
+    device = getenv("TINI_DEVICE");
     if (!device)
 	device = "/dev/ttyS0";
 

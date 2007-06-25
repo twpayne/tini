@@ -27,9 +27,9 @@ By default, tini assumes that your FR is attached to /dev/ttyS0.  You can
 specify a different device using the -d option, for example:
 	$ tini -d /dev/ttyUSB0
 USB-to-serial converters often appear as /dev/ttyUSB0 or /dev/tts/USB0.  To
-avoid typing this every time you can set the TINO_DEVICE environment variable
+avoid typing this every time you can set the TINI_DEVICE environment variable
 to point to the device.  For example (in bash):
-	$ export TINO_DEVICE=/dev/ttyUSB0
+	$ export TINI_DEVICE=/dev/ttyUSB0
 
 For a full list of available commands and options, run:
 	$ tini -h

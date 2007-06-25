@@ -19,8 +19,8 @@
 
 */
 
-#ifndef TINO_H
-#define TINO_H
+#ifndef TINI_H
+#define TINI_H
 
 #include <errno.h>
 #include <stdio.h>
