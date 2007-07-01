@@ -164,7 +164,7 @@ static void tini_download(flytec_t *flytec, set_t *indexes)
 	if (fclose(download_data.file) == EOF)
 	    DIE("fclose", errno);
 	if (!quiet)
-	    fprintf(stderr, "100%% (00:00 remaining)\n");
+	    fprintf(stderr, "100%%            \n");
 	++count;
     }
     if (!quiet) {
