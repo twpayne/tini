@@ -28,6 +28,8 @@
 
 #include "tini.h"
 
+static const char base36[36] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
 flytec_t *flytec_new(const char *device, FILE *logfile)
 {
     flytec_t *flytec = alloc(sizeof(flytec_t));
@@ -231,15 +233,14 @@ snp_t *flytec_pbrsnp(flytec_t *flytec)
     flytec->pilot_name[pilot_name_end - pilot_name] = '\0';
     /* strip leading zeros from serial number */
     flytec->serial_number = flytec->snp->serial_number;
-    while (*flytec->serial_number == '0')
-	++flytec->serial_number;
     return flytec->snp;
 }
 
-track_t **flytec_pbrtl(flytec_t *flytec)
+track_t **flytec_pbrtl(flytec_t *flytec, const char *manufacturer, igc_filename_format_t filename_format)
 {
     if (flytec->trackv)
 	return flytec->trackv;
+    manufacturer = manufacturer ? manufacturer : flytec->manufacturer;
     flytec_pbrsnp(flytec);
     flytec_puts_nmea(flytec, "PBRTL,");
     flytec_expectc(flytec, XOFF);
@@ -273,8 +274,26 @@ track_t **flytec_pbrtl(flytec_t *flytec)
 	/* calculate igc filenames */
 	for (i = 0; i < flytec->trackc; ++i) {
 	    track_t *track = flytec->trackv[i];
-	    track->igc_filename = alloc(128);
-	    snprintf(track->igc_filename, 128, "%04d-%02d-%02d-%s-%s-%02d.IGC", DATE_YEAR(track->date) + 1900, DATE_MON(track->date) + 1, DATE_MDAY(track->date), flytec->manufacturer, flytec->serial_number, track->day_index);
+	    char serial_number[4];
+	    int rc;
+	    switch (filename_format) {
+		case igc_filename_format_long:
+		    track->igc_filename = alloc(128);
+		    rc = snprintf(track->igc_filename, 128, "%04d-%02d-%02d-%s-%d-%02d.IGC", DATE_YEAR(track->date) + 1900, DATE_MON(track->date) + 1, DATE_MDAY(track->date), manufacturer, flytec->serial_number, track->day_index);
+		    if (rc < 0 || rc > 128)
+			error("snprintf");
+		    break;
+		case igc_filename_format_short:
+		    track->igc_filename = alloc(16);
+		    serial_number[0] = base36[flytec->serial_number % 36];
+		    serial_number[1] = base36[(flytec->serial_number / 36) % 36];
+		    serial_number[2] = base36[(flytec->serial_number / 36 / 36) % 36];
+		    serial_number[3] = '\0';
+		    rc = snprintf(track->igc_filename, 16, "%c%c%c%c%s%c.IGC", base36[DATE_YEAR(track->date) % 10], base36[DATE_MON(track->date) + 1], base36[DATE_MDAY(track->date)], manufacturer[0], serial_number, base36[track->day_index]);
+		    if (rc < 0 || rc > 16)
+			error("snprintf");
+		    break;
+	    }
 	}
 
     } else {

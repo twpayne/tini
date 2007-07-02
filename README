@@ -86,6 +86,14 @@ OPTIONS
 -q, --quiet
 	Do not print status messages to stderr.
 
+-m, --manufacturer=STRING
+	Override the manufacturer.  Default is FLY for Flytec devices and BRA
+	for Brauniger devices.  Use --manufacturer=XXX to generate fully IGC-
+	compliant filenames.
+
+-s, --short-filenames
+	Generate IGC files using the short file name style (YMDCXXXF.IGC).
+
 -l, --log=FILENAME
 	Log all communication with the device to FILENAME (use "-" for the
 	standard output).  This is useful for troubleshooting or if you're

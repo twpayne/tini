@@ -32,6 +32,7 @@
 
 const char *program_name = 0;
 const char *device = 0;
+igc_filename_format_t igc_filename_format = igc_filename_format_long;
 FILE *logfile = 0;
 int overwrite = 0;
 int quiet = 0;
@@ -69,17 +70,19 @@ static void usage(void)
     printf("%s - download tracklogs from Brauniger and Flytec flight recorders\n"
 	    "Usage: %s [options] [command]\n"
 	    "Options:\n"
-	    "\t-h, --help\t\tshow some help\n"
-	    "\t-d, --device=DEVICE\tselect device (default is /dev/ttyS0)\n"
-	    "\t-D, --directory=DIR\tdownload tracklogs to DIR\n"
-	    "\t-l, --log=FILENAME\tlog communication to FILENAME\n"
-	    "\t-o, --overwrite\t\toverwrite existing IGC files\n"
-	    "\t-q, --quiet\t\tdon't output aything\n"
+	    "\t-h, --help\t\t\tshow some help\n"
+	    "\t-d, --device=DEVICE\t\tselect device (default is /dev/ttyS0)\n"
+	    "\t-D, --directory=DIR\t\tdownload tracklogs to DIR\n"
+	    "\t-l, --log=FILENAME\t\tlog communication to FILENAME\n"
+	    "\t-m, --manufacturer=STRING\toverride manufacturer\n"
+	    "\t-s, --short-filenames\t\tuse short filename style\n"
+	    "\t-o, --overwrite\t\t\toverwrite existing IGC files\n"
+	    "\t-q, --quiet\t\t\tdon't output aything\n"
 	    "Commands:\n"
-	    "\tid\t\t\tidentify flight recorder\n"
-	    "\tli, list\t\tlist tracklogs\n"
-	    "\tdo, download [LIST]\tdownload tracklogs (default is all)\n"
-	    "\tig, igc\t\t\twrite currently selected tracklog to stdout\n"
+	    "\tid\t\t\t\tidentify flight recorder\n"
+	    "\tli, list\t\t\tlist tracklogs\n"
+	    "\tdo, download [LIST]\t\tdownload tracklogs (default is all)\n"
+	    "\tig, igc\t\t\t\twrite currently selected tracklog to stdout\n"
 	    "Supported flight recorders:\n"
 	    "\tBrauniger Compeo and Competino\n"
 	    "\tFlytec 5020 and 5030\n",
@@ -128,11 +131,11 @@ static void download_callback(void *data, const char *line)
     }
 }
 
-static void tini_download(flytec_t *flytec, set_t *indexes)
+static void tini_download(flytec_t *flytec, set_t *indexes, const char *manufacturer, igc_filename_format_t igc_filename_format)
 {
     int count = 0;
     track_t **ptrack;
-    for (ptrack = flytec_pbrtl(flytec); *ptrack; ++ptrack) {
+    for (ptrack = flytec_pbrtl(flytec, manufacturer, igc_filename_format); *ptrack; ++ptrack) {
 	track_t *track = *ptrack;
 	if (indexes && !set_include(indexes, track->index + 1))
 	    continue;
@@ -170,7 +173,7 @@ static void tini_download(flytec_t *flytec, set_t *indexes)
     if (!quiet) {
 	if (count)
 	    fprintf(stderr, "%s: %d tracklog%s downloaded\n", program_name, count, count == 1 ? "" : "s");
-	else if (*flytec_pbrtl(flytec) == 0)
+	else if (*flytec_pbrtl(flytec, manufacturer, igc_filename_format) == 0)
 	    fprintf(stderr, "%s: no tracklogs to download\n", program_name);
 	else
 	    fprintf(stderr, "%s: no new tracklogs to download\n", program_name);
@@ -183,7 +186,7 @@ static void tini_id(flytec_t *flytec)
     printf("--- \n");
     printf("instrument_id: \"%s\"\n", flytec->snp->instrument_id);
     printf("pilot_name: \"%s\"\n", flytec->pilot_name);
-    printf("serial_number: %s\n", flytec->serial_number);
+    printf("serial_number: %d\n", flytec->serial_number);
     printf("software_version: \"%s\"\n", flytec->snp->software_version);
 }
 
@@ -199,11 +202,11 @@ static void tini_igc(flytec_t *flytec)
     flytec_pbrigc(flytec, igc_callback, stdout);
 }
 
-static void tini_list(flytec_t *flytec)
+static void tini_list(flytec_t *flytec, const char *manufacturer, igc_filename_format_t igc_filename_format)
 {
     track_t **ptrack;
     printf("--- \n");
-    for (ptrack = flytec_pbrtl(flytec); *ptrack; ++ptrack) {
+    for (ptrack = flytec_pbrtl(flytec, manufacturer, igc_filename_format); *ptrack; ++ptrack) {
 	track_t *track = *ptrack;
 	char time[128];
 	if (!strftime(time, sizeof time, "%Y-%m-%d %H:%M:%S +00:00", gmtime(&track->time)))
@@ -214,7 +217,7 @@ static void tini_list(flytec_t *flytec)
 	printf("  duration: \"%02d:%02d:%02d\"\n", duration / 3600, (duration / 60) % 60, duration % 60);
 	printf("  igc_filename: %s\n", track->igc_filename);
     }
-    if (!quiet && *flytec_pbrtl(flytec) == 0)
+    if (!quiet && *flytec_pbrtl(flytec, manufacturer, igc_filename_format) == 0)
 	fprintf(stderr, "%s: no tracklogs\n", program_name);
 }
 
@@ -222,6 +225,8 @@ int main(int argc, char *argv[])
 {
     program_name = strrchr(argv[0], '/');
     program_name = program_name ? program_name + 1 : argv[0];
+
+    char *manufacturer = 0;
 
     device = getenv("TINI_DEVICE");
     if (!device)
@@ -233,15 +238,17 @@ int main(int argc, char *argv[])
     opterr = 0;
     while (1) {
 	static struct option options[] = {
-	    { "device",    required_argument, 0, 'd' },
-	    { "directory", required_argument, 0, 'D' },
-	    { "help",      no_argument,       0, 'h' },
-	    { "overwrite", no_argument,       0, 'o' },
-	    { "quiet",     no_argument,       0, 'q' },
-	    { "log",       required_argument, 0, 'l' },
-	    { 0,           0,                 0, 0 },
+	    { "device",          required_argument, 0, 'd' },
+	    { "directory",       required_argument, 0, 'D' },
+	    { "help",            no_argument,       0, 'h' },
+	    { "overwrite",       no_argument,       0, 'o' },
+	    { "quiet",           no_argument,       0, 'q' },
+	    { "manufacturer",    required_argument, 0, 'm' },
+	    { "short-filenames", no_argument,       0, 's' },
+	    { "log",             required_argument, 0, 'l' },
+	    { 0,                 0,                 0, 0 },
 	};
-	int c = getopt_long(argc, argv, ":D:d:hl:oq", options, 0);
+	int c = getopt_long(argc, argv, ":D:d:hl:m:oqs", options, 0);
 	if (c == -1)
 	    break;
 	switch (c) {
@@ -264,11 +271,17 @@ int main(int argc, char *argv[])
 			error("fopen: %s: %s", optarg, strerror(errno));
 		}
 		break;
+	    case 'm':
+		manufacturer = optarg;
+		break;
 	    case 'o':
 		overwrite = 1;
 		break;
 	    case 'q':
 		quiet = 1;
+		break;
+	    case 's':
+		igc_filename_format = igc_filename_format_short;
 		break;
 	    case ':':
 		error("option '%c' requires an argument", optopt);
@@ -283,7 +296,7 @@ int main(int argc, char *argv[])
 	set_t *indexes = 0;
 	for (; optind < argc; ++optind)
 	    indexes = set_merge(indexes, argv[optind]);
-	tini_download(flytec, indexes);
+	tini_download(flytec, indexes, manufacturer, igc_filename_format);
 	set_delete(indexes);
     } else {
 	if (optind + 1 != argc)
@@ -293,7 +306,7 @@ int main(int argc, char *argv[])
 	} else if (strcmp(argv[optind], "ig") == 0 || strcmp(argv[optind], "igc") == 0) {
 	    tini_igc(flytec);
 	} else if (strcmp(argv[optind], "li") == 0 || strcmp(argv[optind], "list") == 0) {
-	    tini_list(flytec);
+	    tini_list(flytec, manufacturer, igc_filename_format);
 	} else {
 	    error("invalid command '%s'", argv[optind]);
 	}

@@ -57,7 +57,7 @@ int set_include(set_t *, int);
 typedef struct {
     char *instrument_id;
     char *pilot_name;
-    char *serial_number;
+    int serial_number;
     char *software_version;
 } snp_t;
 
@@ -86,13 +86,18 @@ typedef struct {
     snp_t *snp;
     const char *manufacturer;
     char *pilot_name;
-    const char *serial_number;
+    int serial_number;
     int trackc;
     track_t **trackv;
     char *next;
     char *end;
     char buf[128];
 } flytec_t;
+
+typedef enum {
+    igc_filename_format_long,
+    igc_filename_format_short
+} igc_filename_format_t;
 
 void flytec_error(flytec_t *, const char *message, ...);
 flytec_t *flytec_new(const char *, FILE *);
@@ -105,7 +110,7 @@ char *flytec_gets_nmea(flytec_t *, char *, int);
 int flytec_ping(flytec_t *);
 void flytec_pbrigc(flytec_t *, void (*)(void *, const char *), void *);
 snp_t *flytec_pbrsnp(flytec_t *);
-track_t **flytec_pbrtl(flytec_t *);
+track_t **flytec_pbrtl(flytec_t *, const char *, igc_filename_format_t);
 void flytec_pbrtr(flytec_t *, track_t *, void (*)(void *, const char *), void *);
 
 int igc_tm_update(struct tm *, const char *);

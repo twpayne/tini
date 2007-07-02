@@ -27,22 +27,25 @@ machine pbrsnp;
 
 action string_begin { begin = fpc; }
 action string_end {
-	s = alloc(fpc - begin + 1);
-	memcpy(s, begin, fpc - begin);
-	s[fpc - begin] = '\0';
+	string = alloc(fpc - begin + 1);
+	memcpy(string, begin, fpc - begin);
+	string[fpc - begin] = '\0';
 }
 string = [^,]* %string_end;
 
-action pbrsnp_instrument_id { snp->instrument_id = s; s = 0; }
-action pbrsnp_pilot_name { snp->pilot_name = s; s = 0; }
-action pbrsnp_serial_number { snp->serial_number = s; s = 0; }
-action pbrsnp_software_version { snp->software_version = s; s = 0; }
+action integer_begin { integer = 0; }
+action integer_next { integer = integer * 10 + *p - '0'; }
+
+action pbrsnp_instrument_id { snp->instrument_id = string; string = 0; }
+action pbrsnp_pilot_name { snp->pilot_name = string; string = 0; }
+action pbrsnp_serial_number { snp->serial_number = integer; }
+action pbrsnp_software_version { snp->software_version = string; string = 0; }
 
 main :=
 	"PBRSNP" ","
 	%string_begin string %pbrsnp_instrument_id ","
 	%string_begin string %pbrsnp_pilot_name ","
-	%string_begin digit* %string_end %pbrsnp_serial_number ","
+	%integer_begin digit* @integer_next %pbrsnp_serial_number ","
 	%string_begin string %pbrsnp_software_version
 	0 @{ fbreak; };
 }%%
@@ -53,7 +56,8 @@ snp_t *snp_new(const char *p)
     %% write data;
     int cs;
     const char *begin = 0;
-    char *s = 0;
+    char *string = 0;
+    int integer = 0;
     %% write init;
     %% write exec noend;
     if (cs == pbrsnp_error || cs < pbrsnp_first_final) {
@@ -68,7 +72,6 @@ void snp_delete(snp_t *snp)
     if (snp) {
 	free(snp->instrument_id);
 	free(snp->pilot_name);
-	free(snp->serial_number);
 	free(snp->software_version);
 	free(snp);
     }
