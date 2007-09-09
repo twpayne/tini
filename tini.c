@@ -226,7 +226,7 @@ int main(int argc, char *argv[])
     program_name = strrchr(argv[0], '/');
     program_name = program_name ? program_name + 1 : argv[0];
 
-    char *manufacturer = 0;
+    const char *manufacturer = 0;
 
     device = getenv("TINI_DEVICE");
     if (!device)
@@ -291,6 +291,10 @@ int main(int argc, char *argv[])
     }
 
     flytec_t *flytec = flytec_new(device, logfile);
+    if (!manufacturer) {
+	flytec_pbrsnp(flytec);
+	manufacturer = flytec->manufacturer;
+    }
     if (optind == argc || strcmp(argv[optind], "do") == 0 || strcmp(argv[optind], "download") == 0) {
 	++optind;
 	set_t *indexes = 0;
