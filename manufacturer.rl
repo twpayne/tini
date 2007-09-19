@@ -30,7 +30,8 @@ main :=
     "5020"      0 @flytec    |
     "5030"      0 @flytec    |
     "COMPEO"    0 @brauniger |
-    "COMPETINO" 0 @brauniger;
+    "COMPETINO" 0 @brauniger |
+    "GALILEO"   0 @brauniger ;
 
 }%%
 
