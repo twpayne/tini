@@ -231,7 +231,6 @@ snp_t *flytec_pbrsnp(flytec_t *flytec)
     flytec->pilot_name = alloc(pilot_name_end - pilot_name + 1);
     memcpy(flytec->pilot_name, pilot_name, pilot_name_end - pilot_name);
     flytec->pilot_name[pilot_name_end - pilot_name] = '\0';
-    /* strip leading zeros from serial number */
     flytec->serial_number = flytec->snp->serial_number;
     return flytec->snp;
 }
