@@ -5,9 +5,9 @@ Copyright (C) 2007 Tom Payne
 
 INTRODUCTION
 
-tini is command-line program for downloading tracklogs from Flytec and
-Brauniger flight recorders.  Its goal is to be simple, functional and
-portable with no external dependencies.
+tini is simple program for downloading tracklogs from Flytec and Brauniger
+flight recorders.  Its goal is to be simple, functional and portable with no
+external dependencies.
 
 The following flight recorders (FRs) are supported:
     Brauniger Galileo, Compeo and Competino
