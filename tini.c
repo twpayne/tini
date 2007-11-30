@@ -30,6 +30,10 @@
 
 #include "tini.h"
 
+#ifndef DEVICE
+#define DEVICE "/dev/ttyS0"
+#endif
+
 const char *program_name = 0;
 const char *device = 0;
 igc_filename_format_t igc_filename_format = igc_filename_format_long;
@@ -71,7 +75,7 @@ static void usage(void)
 	    "Usage: %s [options] [command]\n"
 	    "Options:\n"
 	    "\t-h, --help\t\t\tshow some help\n"
-	    "\t-d, --device=DEVICE\t\tselect device (default is /dev/ttyS0)\n"
+	    "\t-d, --device=DEVICE\t\tselect device (default is %s)\n"
 	    "\t-D, --directory=DIR\t\tdownload tracklogs to DIR\n"
 	    "\t-l, --log=FILENAME\t\tlog communication to FILENAME\n"
 	    "\t-m, --manufacturer=STRING\toverride manufacturer\n"
@@ -86,7 +90,7 @@ static void usage(void)
 	    "Supported flight recorders:\n"
 	    "\tBrauniger Compeo and Competino\n"
 	    "\tFlytec 5020 and 5030\n",
-	    program_name, program_name);
+	    program_name, program_name, DEVICE);
 }
 
 typedef struct {
@@ -238,7 +242,7 @@ int main(int argc, char *argv[])
 
     device = getenv("TINI_DEVICE");
     if (!device)
-	device = "/dev/ttyS0";
+	device = DEVICE;
 
     setenv("TZ", "UTC", 1);
     tzset();
