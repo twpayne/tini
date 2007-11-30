@@ -147,7 +147,7 @@ static void tini_download(flytec_t *flytec, set_t *indexes, const char *manufact
 		DIE("stat", errno);
 	}
 	if (!quiet)
-	    fprintf(stderr, "%s: downloading %s ", program_name, track->igc_filename);
+	    fprintf(stderr, "%s: downloading %s  ", program_name, track->igc_filename);
 	download_data_t download_data;
 	memset(&download_data, 0, sizeof download_data);
 	download_data.track = track;
@@ -162,7 +162,7 @@ static void tini_download(flytec_t *flytec, set_t *indexes, const char *manufact
 	if (download_data.clock == (clock_t) -1)
 	    DIE("times", errno);
 	if (!quiet)
-	    fprintf(stderr, "   0%%           ");
+	    fprintf(stderr, "  0%%           ");
 	flytec_pbrtr(flytec, track, download_callback, &download_data);
 	if (fclose(download_data.file) == EOF)
 	    DIE("fclose", errno);
