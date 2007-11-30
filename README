@@ -9,8 +9,8 @@ tini is command-line program for downloading tracklogs from Flytec and
 Brauniger flight recorders.  Its goal is to be simple, functional and
 portable with no external dependencies.
 
-The following recorders (FRs) are supported:
-    Brauniger Compeo and Competino
+The following flight recorders (FRs) are supported:
+    Brauniger Galileo, Compeo and Competino
     Flytec 5020 and 5030
 
 
@@ -97,7 +97,7 @@ OPTIONS
 -l, --log=FILENAME
 	Log all communication with the device to FILENAME (use "-" for the
 	standard output).  This is useful for troubleshooting or if you're
-	curious about to what happens behind the scenes.
+	curious about what happens behind the scenes.
 
 
 
