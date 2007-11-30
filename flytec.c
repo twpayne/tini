@@ -34,7 +34,7 @@ flytec_t *flytec_new(const char *device, FILE *logfile)
 {
     flytec_t *flytec = alloc(sizeof(flytec_t));
     flytec->device = device;
-    flytec->fd = open(flytec->device, O_NOCTTY | O_RDWR);
+    flytec->fd = open(flytec->device, O_NOCTTY | O_NONBLOCK | O_RDWR);
     if (flytec->fd == -1)
 	error("open: %s: %s", flytec->device, strerror(errno));
     if (tcflush(flytec->fd, TCIOFLUSH) == -1)
