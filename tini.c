@@ -124,7 +124,7 @@ static void download_callback(void *data, const char *line)
 	else if (remaining_sec > 99 * 60 + 59)
 	    remaining_sec = 99 * 60 + 59;
 	if (percentage != download_data->percentage || remaining_sec < download_data->remaining_sec) {
-	    fprintf(stderr, "%3d%% (ETA %02d:%02d)\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b", percentage, remaining_sec / 60, remaining_sec % 60);
+	    fprintf(stderr, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b%3d%%  %02d:%02d ETA", percentage, remaining_sec / 60, remaining_sec % 60);
 	    download_data->percentage = percentage;
 	    download_data->remaining_sec = remaining_sec;
 	}
@@ -147,7 +147,7 @@ static void tini_download(flytec_t *flytec, set_t *indexes, const char *manufact
 		DIE("stat", errno);
 	}
 	if (!quiet)
-	    fprintf(stderr, "%s: downloading %s", program_name, track->igc_filename);
+	    fprintf(stderr, "%s: downloading %s ", program_name, track->igc_filename);
 	download_data_t download_data;
 	memset(&download_data, 0, sizeof download_data);
 	download_data.track = track;
@@ -162,12 +162,20 @@ static void tini_download(flytec_t *flytec, set_t *indexes, const char *manufact
 	if (download_data.clock == (clock_t) -1)
 	    DIE("times", errno);
 	if (!quiet)
-	    fprintf(stderr, "   0%%\b\b\b\b");
+	    fprintf(stderr, "   0%%           ");
 	flytec_pbrtr(flytec, track, download_callback, &download_data);
 	if (fclose(download_data.file) == EOF)
 	    DIE("fclose", errno);
-	if (!quiet)
-	    fprintf(stderr, "100%%            \n");
+	if (!quiet) {
+	    struct tms tms;
+	    clock_t clock = times(&tms);
+	    if (clock == (clock_t) -1)
+		DIE("times", errno);
+	    int sec = (clock - download_data.clock + download_data._sc_clk_tck / 2) / download_data._sc_clk_tck;
+	    if (sec > 99 * 60 + 59)
+		sec = 99 * 60 + 59;
+	    fprintf(stderr, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b100%%  %02d:%02d    \n", sec / 60, sec % 60);
+	}
 	++count;
     }
     if (!quiet) {
