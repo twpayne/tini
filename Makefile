@@ -3,7 +3,6 @@ DEVICE=/dev/ttyS0
 
 CC=gcc
 CFLAGS=-O2 -Wall -Wno-unused -DDEVICE=\"$(DEVICE)\"
-INSTALL=install
 RAGEL=ragel
 RLGEN=rlgen-cd
 RLGENFLAGS=-G2
