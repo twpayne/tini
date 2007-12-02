@@ -2,7 +2,7 @@ PREFIX=/usr/local
 DEVICE=/dev/ttyS0
 
 CC=gcc
-CFLAGS=-O2 -Wall -Wextra -Wno-unused -DDEVICE=\"$(DEVICE)\"
+CFLAGS=-O2 -Wall -Wno-unused -DDEVICE=\"$(DEVICE)\"
 INSTALL=install
 RAGEL=ragel
 RLGEN=rlgen-cd
