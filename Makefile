@@ -35,7 +35,8 @@ setgidinstall: install
 
 install: $(BINS)
 	@echo "  INSTALL tini"
-	@$(INSTALL) -D -m 755 tini $(PREFIX)/bin/tini
+	@mkdir -p $(PREFIX)/bin
+	@cp tini $(PREFIX)/bin/tini
 
 tini: $(OBJS)
 
