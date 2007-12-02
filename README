@@ -31,6 +31,9 @@ avoid typing this every time you can set the TINI_DEVICE environment variable
 to point to the device.  For example (in bash):
 	$ export TINI_DEVICE=/dev/ttyUSB0
 
+You can also set the default device at compile time.  See "ADVANCED USAGE"
+below.
+
 For a full list of available commands and options, run:
 	$ tini -h
 
@@ -139,6 +142,10 @@ between tini and your FR on the standard output.
 
 
 ADVANCED USAGE
+
+You can set the default device at compile tile by setting the DEVICE variable
+in make.  For example to set the default device to /dev/ttyUSB0 use:
+	make DEVICE=/dev/ttyUSB0
 
 If, instead of granting permissions to users to access the serial ports, you
 can grant access to the tini program instead.  Typically the serial port
