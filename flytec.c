@@ -1,7 +1,7 @@
 /*
 
    tini - download tracklogs from Brauniger and Flytec flight recorders
-   Copyright (C) 2007  Tom Payne
+   Copyright (C) 2007-2008  Tom Payne
 
    This program is free software; you can redistribute it and/or modify it
    under the terms of the GNU General Public License as published by the

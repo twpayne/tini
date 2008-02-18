@@ -3,26 +3,20 @@ DEVICE=/dev/ttyS0
 
 CC=gcc
 CFLAGS=-O2 -Wall -Wno-unused -DDEVICE=\"$(DEVICE)\"
-RAGEL=ragel
-RLGEN=rlgen-cd
-RLGENFLAGS=-G2
 
-RAGELS=igc_tm.rl manufacturer.rl pbrsnp.rl pbrtl.rl set.rl
-RAGEL_SRCS=$(RAGELS:%.rl=%.c)
-SRCS=tini.c flytec.c $(RAGEL_SRCS)
+SRCS=tini.c flytec.c regexp.c
 HEADERS=tini.h
 OBJS=$(SRCS:%.c=%.o)
 BINS=tini
 DOCS=README COPYING
 
-.PHONY: all clean setgidinstall install reallyclean tarball
-.PRECIOUS: $(RAGEL_SRCS)
+.PHONY: all clean setgidinstall install tarball
 
 all: $(BINS)
 
-tarball: $(RAGEL_SRCS)
+tarball:
 	mkdir tini-$(VERSION)
-	cp Makefile $(SRCS) $(HEADERS) $(RAGELS) $(DOCS) tini-$(VERSION)
+	cp Makefile $(SRCS) $(HEADERS) $(DOCS) tini-$(VERSION)
 	tar -czf tini-$(VERSION).tar.gz tini-$(VERSION)
 	rm -Rf tini-$(VERSION)
 
@@ -39,17 +33,9 @@ install: $(BINS)
 
 tini: $(OBJS)
 
-reallyclean: clean
-	@echo "  CLEAN   $(RAGEL_SRCS)"
-	@rm -f $(RAGEL_SRCS)
-
 clean:
 	@echo "  CLEAN   $(BINS) $(OBJS)"
 	@rm -f $(BINS) $(OBJS)
-
-%.c: %.rl
-	@echo "  RAGEL   $<"
-	@$(RAGEL) $< | $(RLGEN) -o $@ $(RLGENFLAGS)
 
 %.o: %.c $(HEADERS)
 	@echo "  CC      $<"
