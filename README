@@ -10,8 +10,13 @@ flight recorders.  Its goal is to be simple, functional and portable with no
 external dependencies.
 
 The following flight recorders (FRs) are supported:
-    Brauniger Galileo, Compeo and Competino
-    Flytec 5020 and 5030
+    Brauniger Galileo
+    Brauniger Compeo
+    Brauniger Competino
+    Brauniger Compeo+
+    Flytec 5020
+    FLytec 5030
+    FLytec 6030
 
 
 
@@ -26,9 +31,9 @@ If this doesn't work then check the "TROUBLESHOOTING" section below.
 By default, tini assumes that your FR is attached to /dev/ttyS0.  You can
 specify a different device using the -d option, for example:
 	$ tini -d /dev/ttyUSB0
-USB-to-serial converters often appear as /dev/ttyUSB0 or /dev/tts/USB0.  To
-avoid typing this every time you can set the TINI_DEVICE environment variable
-to point to the device.  For example (in bash):
+USB-to-serial converters and the Compeo+/6030 often appear as /dev/ttyUSB0 or
+/dev/tts/USB0.  To avoid typing this every time you can set the TINI_DEVICE
+environment variable to point to the device.  For example (in bash):
 	$ export TINI_DEVICE=/dev/ttyUSB0
 
 You can also set the default device at compile time.  See "ADVANCED USAGE"
@@ -111,7 +116,7 @@ exactly this order:
 
 1. Switch on the FR.
 
-2. On the FR, go to the "Main Setup Menu" (hold down F2 / Menu).
+2. On the FR, go to the "Main Setup Menu" (hold down Menu).
 
 3. Optionally, if you want to use the "igc" command then select the flight you
 want to download by choosing "Flight Memory" from the "Main Setup Menu", using
@@ -122,7 +127,7 @@ its summary.
 
 5. Check that the device is correct (typically /dev/ttyS0 is the first serial
 port, /dev/ttyS1 is the second serial port, and /dev/ttyUSB0 or /dev/tts/USB0
-is the USB-to-serial converter).
+is the USB-to-serial converter or 6030/Compeo+).
 
 6. Check that you (as a user) has permission to access the device you
 identified in step 5.  If you get "Permission denied" errors then you do not
