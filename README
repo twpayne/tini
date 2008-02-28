@@ -127,7 +127,7 @@ its summary.
 
 5. Check that the device is correct (typically /dev/ttyS0 is the first serial
 port, /dev/ttyS1 is the second serial port, and /dev/ttyUSB0 or /dev/tts/USB0
-is the USB-to-serial converter or 6030/Compeo+).
+is the USB-to-serial converter or Compeo+/6030).
 
 6. Check that you (as a user) has permission to access the device you
 identified in step 5.  If you get "Permission denied" errors then you do not
