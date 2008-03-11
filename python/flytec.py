@@ -91,29 +91,23 @@ class SerialIO:
 
 if os.name == 'posix':
   import select
-  import termios
+  import tty
 
 class POSIXSerialIO(SerialIO):
 
   def __init__(self, filename):
     SerialIO.__init__(self, filename)
     self.fd = os.open(filename, os.O_RDWR|os.O_NOCTTY|os.O_NONBLOCK)
-    attr = termios.tcgetattr(self.fd)
-    attr[0] = termios.IGNPAR
-    attr[1] = 0
-    attr[2] = termios.CLOCAL|termios.CREAD|termios.CS8
-    attr[3] = 0
-    attr[4] = termios.B57600
-    attr[5] = termios.B57600
-    termios.tcsetattr(self.fd, termios.TCSANOW, attr)
+    tty.setraw(self.fd)
+    attr = tty.tcgetattr(self.fd)
+    attr[tty.ISPEED] = attr[tty.OSPEED] = tty.B57600
+    tty.tcsetattr(self.fd, tty.TCSAFLUSH, attr)
 
   def close(self):
-    if not self.fd is None:
-      os.close(self.fd)
-      self.fd = None
+    os.close(self.fd)
 
   def flush(self):
-    termios.tcflush(self.fd, termios.TCIOFLUSH)
+    tty.tcflush(self.fd, tty.TCIOFLUSH)
 
   def read(self, n):
     if select.select([self.fd], [], [], 1) == ([], [], []): raise TimeoutError()
