@@ -19,12 +19,12 @@ XOFF = '\023'
 
 # Regular expressions
 
-PBRMEMR_RE = re.compile('\\APBRMEMR,([0-9A-F]+),([0-9A-F]+(?:,[0-9A-F]+)*)\\Z')
-PBRRTS_RE1 = re.compile('\\APBRRTS,(\\d+),(\\d+),0+,(.*)\\Z')
-PBRRTS_RE2 = re.compile('\\APBRRTS,(\\d+),(\\d+),(\\d+),([^,]*),(.*?)\\Z')
-PBRSNP_RE = re.compile('\\APBRSNP,([^,]*),([^,]*),([^,]*),([^,]*)\\Z')
-PBRTL_RE = re.compile('\\APBRTL,(\\d+),(\\d+),(\\d+).(\\d+).(\\d+),(\\d+):(\\d+):(\\d+),(\\d+):(\\d+):(\\d+)\\Z')
-PBRWPS_RE = re.compile('\\APBRWPS,(\\d{2})(\\d{2}\\.\\d+),([NS]),(\\d{3})(\\d{2}\\.\\d+),([EW]),([^,]*),([^,]*),(\\d+)\\Z')
+PBRMEMR_RE = re.compile(r'\APBRMEMR,([0-9A-F]+),([0-9A-F]+(?:,[0-9A-F]+)*)\Z')
+PBRRTS_RE1 = re.compile(r'\APBRRTS,(\d+),(\d+),0+,(.*)\Z')
+PBRRTS_RE2 = re.compile(r'\APBRRTS,(\d+),(\d+),(\d+),([^,]*),(.*?)\Z')
+PBRSNP_RE = re.compile(r'\APBRSNP,([^,]*),([^,]*),([^,]*),([^,]*)\Z')
+PBRTL_RE = re.compile(r'\APBRTL,(\d+),(\d+),(\d+).(\d+).(\d+),(\d+):(\d+):(\d+),(\d+):(\d+):(\d+)\Z')
+PBRWPS_RE = re.compile(r'\APBRWPS,(\d{2})(\d{2})\.(\d{3}),([NS]),(\d{3})(\d{2})\.(\d{3}),([EW]),([^,]*),([^,]*),(\d+)\Z')
 
 #
 # Error
@@ -217,6 +217,7 @@ class Flytec:
 
   def pbrconf(self):
     self.none('PBRCONF,')
+    if self.__dict__.has_key('_snp'): del self._snp
 
   def ipbrigc(self):
     return self.ieach('PBRIGC,')
@@ -288,13 +289,13 @@ class Flytec:
 
   def ipbrwps(self):
     for m in self.ieach('PBRWPS,', PBRWPS_RE):
-      lat = int(m.group(1)) + float(m.group(2)) / 60
-      if m.group(3) == 'S': lat *= -1
-      lon = int(m.group(4)) + float(m.group(5)) / 60
-      if m.group(6) == 'W': lon *= -1
-      short_name = m.group(7)
-      long_name = m.group(8)
-      alt = int(m.group(9))
+      lat = 60000 * int(m.group(1)) + 1000 * int(m.group(2)) + int(m.group(3))
+      if m.group(4) == 'S': lat *= -1
+      lon = 60000 * int(m.group(5)) + 1000 * int(m.group(6)) + int(m.group(7))
+      if m.group(8) == 'W': lon *= -1
+      short_name = m.group(9)
+      long_name = m.group(10)
+      alt = int(m.group(11))
       yield Waypoint(lat, lon, short_name, long_name, alt)
 
   def pbrwps(self):
@@ -315,7 +316,7 @@ class Flytec:
       return self._snp.pilot_name.strip()
     elif attr == 'serial_number':
       if not self.__dict__.has_key('_snp'): self._snp = self.pbrsnp()
-      return re.compile('\\A0+').sub('', self._snp.serial_number)
+      return re.compile(r'\A0+').sub('', self._snp.serial_number)
     elif attr == 'software_version':
       if not self.__dict__.has_key('_snp'): self._snp = self.pbrsnp()
       return self._snp.software_version
