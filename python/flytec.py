@@ -7,10 +7,10 @@ import select
 import termios
 
 MANUFACTURER = {}
-for instrument in '5020 5030 6020 6030'.split(' '):
-  MANUFACTURER[instrument] = 'Flytec'
 for instrument in 'COMPEO COMPEO+ COMPETINO COMPETINO+ GALILEO'.split(' '):
   MANUFACTURER[instrument] = 'Br\xc3\xa4uniger'.decode('utf-8')
+for instrument in '5020 5030 6020 6030'.split(' '):
+  MANUFACTURER[instrument] = 'Flytec'
 
 XON = '\021'
 XOFF = '\023'
@@ -28,36 +28,27 @@ class Error(RuntimeError):
 class TimeoutError(Error):
   pass
 
-class POSIXSerialIO:
+class ReadError(Error):
+  pass
+
+class WriteError(Error):
+  pass
+
+class SerialIO:
 
   def __init__(self, filename):
     self.logger = logging.getLogger('%s.%s' % (__name__, filename))
-    self.fd = os.open(filename, os.O_RDWR|os.O_NOCTTY|os.O_NONBLOCK)
     self.buffer = ''
-    attr = termios.tcgetattr(self.fd)
-    attr[0] = termios.IGNPAR
-    attr[1] = 0
-    attr[2] = termios.CLOCAL|termios.CREAD|termios.CS8
-    attr[3] = 0
-    attr[4] = termios.B57600
-    attr[5] = termios.B57600
-    termios.tcsetattr(self.fd, termios.TCSANOW, attr)
-    self.flush()
 
-  def close(self):
-    if not self.fd is None:
-      os.close(self.fd)
-      self.fd = None
+  def __del__(self):
+    self.close()
 
   def fill(self):
-    if select.select([self.fd], [], [], 1) == ([], [], []): raise TimeoutError()
-    self.buffer += os.read(self.fd, 1024)
-
-  def flush(self):
-    termios.tcflush(self.fd, termios.TCIOFLUSH)
+    self.buffer += self.read(1024)
 
   def readline(self):
-    if self.buffer == '': self.fill()
+    if self.buffer == '':
+      self.fill()
     if self.buffer[0] == XON or self.buffer[0] == XOFF:
       result = self.buffer[0]
       self.buffer = self.buffer[1:]
@@ -77,36 +68,96 @@ class POSIXSerialIO:
 	  self.logger.info('%s', result.encode('string_escape'), extra=dict(direction='read'))
 	  return result
 
-  def write(self, line):
+  def writeline(self, line):
     self.logger.info('%s', line.encode('string_escape'), extra=dict(direction='write'))
-    os.write(self.fd, line)
+    self.write(line)
 
-class Route(tuple):
+if os.name == 'posix':
+  import termios
 
-  def __new__(self, index, name, routepoints):
-    self = tuple.__new__(self, (index, name, routepoints))
+class POSIXSerialIO(SerialIO):
+
+  def __init__(self, filename):
+    SerialIO.__init__(self, filename)
+    self.fd = os.open(filename, os.O_RDWR|os.O_NOCTTY|os.O_NONBLOCK)
+    attr = termios.tcgetattr(self.fd)
+    attr[0] = termios.IGNPAR
+    attr[1] = 0
+    attr[2] = termios.CLOCAL|termios.CREAD|termios.CS8
+    attr[3] = 0
+    attr[4] = termios.B57600
+    attr[5] = termios.B57600
+    termios.tcsetattr(self.fd, termios.TCSANOW, attr)
+
+  def close(self):
+    if not self.fd is None:
+      os.close(self.fd)
+      self.fd = None
+
+  def flush(self):
+    termios.tcflush(self.fd, termios.TCIOFLUSH)
+
+  def read(self, n):
+    if select.select([self.fd], [], [], 1) == ([], [], []): raise TimeoutError()
+    data = os.read(self.fd, n)
+    if len(data) == 0: raise ReadError()
+    return data
+
+  def write(self, data):
+    if os.write(self.fd, data) != len(data): raise WriteError()
+
+if os.name == 'nt':
+  import win32con
+  import win32file
+
+class Win32SerialIO(SerialIO):
+
+  def __init__(self, filename):
+    SerialIO.__init__(self, filename)
+    self.handle = win32file.CreateFile(filename, win32con.GENERIC_READ|win32.GENERIC_WRITE, 0, None, win32con.OPEN_EXISTING, 0, None)
+    dcb = win32.GetCommState(self.handle)
+    dcb.BaudRate = win32file.CBR_57600
+    dcb.ByteSize = 8
+    dcb.Parity = win32file.NOPARITY
+    dcb.StopBits = win32file.ONESTOPBIT
+    win32file.SetCommState(self.handle, dcb)
+    win32file.SetCommTimeouts(self.handle, [0xffffffff, 0, 1000, 0, 1000])
+
+  def close(self):
+    win32.CloseHandle(self.handle)
+
+  def flush(self):
+    win32.PurgeComm(self.handle, win32file.PURGE_TXABORT|win32file.PURGE_RXABORT|win32file.PURGE_TXCLEAR|win32file.PURGE_RXCLEAR)
+
+  def read(self, n):
+    rc, data = win32file.ReadFile(self.handle, win32.AllocateReadBuffer(n))
+    if rc == 0: raise TimeoutError()
+    return data
+
+  def write(self, data):
+    rc, n = win32file.WriteFile(self.handle, data)
+    if rc: raise WriteError()
+
+class Route:
+
+  def __init__(self, index, name, routepoints):
     self.index = index
     self.name = name
     self.routepoints = routepoints
-    return self
 
-class Routepoint(tuple):
+class Routepoint:
 
-  def __new__(self, short_name, long_name):
-    self = tuple.__new__(self, (short_name, long_name))
+  def __init__(self, short_name, long_name):
     self.short_name = short_name
     self.long_name = long_name
-    return self
 
-class SNP(tuple):
+class SNP:
 
-  def __new__(self, instrument, pilot_name, serial_number, software_version):
-    self = tuple.__new__(self, (instrument, pilot_name, serial_number, software_version))
+  def __init__(self, instrument, pilot_name, serial_number, software_version):
     self.instrument = instrument
     self.pilot_name = pilot_name
     self.serial_number = serial_number
     self.software_version = software_version
-    return self
 
 class Track:
 
@@ -117,16 +168,14 @@ class Track:
     self.duration = duration
     self.igc_filename = igc_filename
 
-class Waypoint(tuple):
+class Waypoint:
 
-  def __new__(self, lat, lon, short_name, long_name, alt):
-    self = tuple.__new__(self, (lat, lon, short_name, long_name, alt))
+  def __init__(self, lat, lon, short_name, long_name, alt):
     self.lat = lat
     self.lon = lon
     self.short_name = short_name
     self.long_name = long_name
     self.alt = alt
-    return self
 
 class Flytec:
 
@@ -135,7 +184,7 @@ class Flytec:
 
   def ieach(self, command, re=None):
     try:
-      self.io.write(nmea.encode(command))
+      self.io.writeline(nmea.encode(command))
       if self.io.readline() != XOFF: raise Error
       while True:
 	line = self.io.readline()
@@ -222,6 +271,7 @@ class Flytec:
 	index += 1
       else:
 	index = 1
+      # FIXME calculate manufacturer code
       track.igc_filename = '%s-XXX-%s-%02d.IGC' % (track.datetime.strftime('%Y-%m-%d'), self.serial_number, index)
       date = track.datetime.date()
     return tracks
