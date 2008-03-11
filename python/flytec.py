@@ -3,8 +3,8 @@ import logging
 import nmea
 import os
 import re
-import select
-import termios
+
+# Manufacturers
 
 MANUFACTURER = {}
 for instrument in 'COMPEO COMPEO+ COMPETINO COMPETINO+ GALILEO'.split(' '):
@@ -12,8 +12,12 @@ for instrument in 'COMPEO COMPEO+ COMPETINO COMPETINO+ GALILEO'.split(' '):
 for instrument in '5020 5030 6020 6030'.split(' '):
   MANUFACTURER[instrument] = 'Flytec'
 
+# Strings
+
 XON = '\021'
 XOFF = '\023'
+
+# Regular expressions
 
 PBRMEMR_RE = re.compile('\\APBRMEMR,([0-9A-F]+),([0-9A-F]+(?:,[0-9A-F]+)*)\\Z')
 PBRRTS_RE1 = re.compile('\\APBRRTS,(\\d+),(\\d+),0+,(.*)\\Z')
@@ -22,17 +26,18 @@ PBRSNP_RE = re.compile('\\APBRSNP,([^,]*),([^,]*),([^,]*),([^,]*)\\Z')
 PBRTL_RE = re.compile('\\APBRTL,(\\d+),(\\d+),(\\d+).(\\d+).(\\d+),(\\d+):(\\d+):(\\d+),(\\d+):(\\d+):(\\d+)\\Z')
 PBRWPS_RE = re.compile('\\APBRWPS,(\\d{2})(\\d{2}\\.\\d+),([NS]),(\\d{3})(\\d{2}\\.\\d+),([EW]),([^,]*),([^,]*),(\\d+)\\Z')
 
-class Error(RuntimeError):
-  pass
+#
+# Error
+#
 
-class TimeoutError(Error):
-  pass
+class Error(RuntimeError): pass
+class TimeoutError(Error): pass
+class ReadError(Error): pass
+class WriteError(Error): pass
 
-class ReadError(Error):
-  pass
-
-class WriteError(Error):
-  pass
+#
+# SerialIO
+#
 
 class SerialIO:
 
@@ -43,12 +48,9 @@ class SerialIO:
   def __del__(self):
     self.close()
 
-  def fill(self):
-    self.buffer += self.read(1024)
-
   def readline(self):
     if self.buffer == '':
-      self.fill()
+      self.buffer = self.read(1024)
     if self.buffer[0] == XON or self.buffer[0] == XOFF:
       result = self.buffer[0]
       self.buffer = self.buffer[1:]
@@ -60,8 +62,7 @@ class SerialIO:
 	index = self.buffer.find('\n')
 	if index == -1:
 	  result += self.buffer
-	  self.buffer = ''
-	  self.fill()
+	  self.buffer = self.read(1024)
 	else:
 	  result += self.buffer[0:index + 1]
 	  self.buffer = self.buffer[index + 1:]
@@ -72,7 +73,24 @@ class SerialIO:
     self.logger.info('%s', line.encode('string_escape'), extra=dict(direction='write'))
     self.write(line)
 
+  def close(self):
+    pass
+
+  def flush(self):
+    pass
+
+  def read(self, n):
+    raise NotImplementedError
+
+  def write(self, data):
+    raise NotImplementedError
+
+#
+# POSIXSerialIO
+#
+
 if os.name == 'posix':
+  import select
   import termios
 
 class POSIXSerialIO(SerialIO):
@@ -106,6 +124,10 @@ class POSIXSerialIO(SerialIO):
   def write(self, data):
     if os.write(self.fd, data) != len(data): raise WriteError()
 
+#
+# Win32SerialIO
+#
+
 if os.name == 'nt':
   import win32con
   import win32file
@@ -116,10 +138,7 @@ class Win32SerialIO(SerialIO):
     SerialIO.__init__(self, filename)
     self.handle = win32file.CreateFile(filename, win32con.GENERIC_READ|win32.GENERIC_WRITE, 0, None, win32con.OPEN_EXISTING, 0, None)
     dcb = win32.GetCommState(self.handle)
-    dcb.BaudRate = win32file.CBR_57600
-    dcb.ByteSize = 8
-    dcb.Parity = win32file.NOPARITY
-    dcb.StopBits = win32file.ONESTOPBIT
+    dcb.BaudRate, dcb.ByteSize, dcb.Parity, dcb.StopBits = win32file.CBR_57600, 8, win32file.NOPARITY, win32file.ONESTOPBIT
     win32file.SetCommState(self.handle, dcb)
     win32file.SetCommTimeouts(self.handle, [0xffffffff, 0, 1000, 0, 1000])
 
@@ -136,7 +155,11 @@ class Win32SerialIO(SerialIO):
 
   def write(self, data):
     rc, n = win32file.WriteFile(self.handle, data)
-    if rc: raise WriteError()
+    if rc or n != len(data): raise WriteError()
+
+#
+# Route
+#
 
 class Route:
 
@@ -145,11 +168,19 @@ class Route:
     self.name = name
     self.routepoints = routepoints
 
+#
+# Routepoint
+#
+
 class Routepoint:
 
   def __init__(self, short_name, long_name):
     self.short_name = short_name
     self.long_name = long_name
+
+#
+# SNP
+#
 
 class SNP:
 
@@ -158,6 +189,10 @@ class SNP:
     self.pilot_name = pilot_name
     self.serial_number = serial_number
     self.software_version = software_version
+
+#
+# Track
+#
 
 class Track:
 
@@ -168,6 +203,10 @@ class Track:
     self.duration = duration
     self.igc_filename = igc_filename
 
+#
+# Waypoint
+#
+
 class Waypoint:
 
   def __init__(self, lat, lon, short_name, long_name, alt):
@@ -176,6 +215,10 @@ class Waypoint:
     self.short_name = short_name
     self.long_name = long_name
     self.alt = alt
+
+#
+# Flytec
+#
 
 class Flytec:
 
