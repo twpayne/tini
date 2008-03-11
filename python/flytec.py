@@ -119,39 +119,6 @@ class POSIXSerialIO(SerialIO):
     if os.write(self.fd, data) != len(data): raise WriteError()
 
 #
-# Win32SerialIO
-#
-
-if os.name == 'nt':
-  import win32con
-  import win32file
-
-class Win32SerialIO(SerialIO):
-
-  def __init__(self, filename):
-    SerialIO.__init__(self, filename)
-    self.handle = win32file.CreateFile(filename, win32con.GENERIC_READ|win32con.GENERIC_WRITE, 0, None, win32con.OPEN_EXISTING, 0, None)
-    dcb = win32.GetCommState(self.handle)
-    dcb.BaudRate, dcb.ByteSize, dcb.Parity, dcb.StopBits = win32file.CBR_57600, 8, win32file.NOPARITY, win32file.ONESTOPBIT
-    win32file.SetCommState(self.handle, dcb)
-    win32file.SetCommTimeouts(self.handle, [0xffffffff, 0, 1000, 0, 1000])
-
-  def close(self):
-    win32file.CloseHandle(self.handle)
-
-  def flush(self):
-    win32file.PurgeComm(self.handle, win32file.PURGE_TXABORT|win32file.PURGE_RXABORT|win32file.PURGE_TXCLEAR|win32file.PURGE_RXCLEAR)
-
-  def read(self, n):
-    rc, data = win32file.ReadFile(self.handle, win32.AllocateReadBuffer(n))
-    if rc == 0: raise TimeoutError()
-    return data
-
-  def write(self, data):
-    rc, n = win32file.WriteFile(self.handle, data)
-    if rc or n != len(data): raise WriteError()
-
-#
 # Route
 #
 
