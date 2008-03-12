@@ -3,14 +3,15 @@ import logging
 import nmea
 import os
 import re
+import utc
 
 # Manufacturers
 
 MANUFACTURER = {}
 for instrument in 'COMPEO COMPEO+ COMPETINO COMPETINO+ GALILEO'.split(' '):
-  MANUFACTURER[instrument] = 'Br\xc3\xa4uniger'.decode('utf-8')
+  MANUFACTURER[instrument] = ('B', 'BRA', 'Br\xc3\xa4uniger')
 for instrument in '5020 5030 6020 6030'.split(' '):
-  MANUFACTURER[instrument] = 'Flytec'
+  MANUFACTURER[instrument] = ('F', 'FLY', 'Flytec')
 
 # Strings
 
@@ -157,12 +158,20 @@ class SNP:
 
 class Track:
 
-  def __init__(self, count, index, datetime, duration, igc_filename=None):
+  def __init__(self, count, index, datetime, duration, igc_lambda=None, igc_filename=None):
     self.count = count
     self.index = index
     self.datetime = datetime
     self.duration = duration
+    self.igc_lambda = igc_lambda
     self.igc_filename = igc_filename
+
+  def __getattr__(self, attr):
+    if attr == 'igc' and self.__dict__.has_key('igc_lambda'):
+      self.igc = self.igc_lambda()
+      return self.igc
+    else:
+      return None
 
 #
 # Waypoint
@@ -217,7 +226,7 @@ class Flytec:
 
   def pbrconf(self):
     self.none('PBRCONF,')
-    if self.__dict__.has_key('_snp'): del self._snp
+    if self.__dict__.has_key('snp'): del self.snp
 
   def ipbrigc(self):
     return self.ieach('PBRIGC,')
@@ -263,21 +272,21 @@ class Flytec:
 
   def pbrtl(self):
     tracks = []
+    def igc_lambda(self, index): return lambda: self.pbrtr(index)
     for m in self.ieach('PBRTL,', PBRTL_RE):
       count, index = [int(i) for i in m.groups()[0:2]]
       day, month, year, hour, minute, second = [int(i) for i in m.groups()[2:8]]
-      _datetime = datetime.datetime(year + 2000, month, day, hour, minute, second)
+      _datetime = datetime.datetime(year + 2000, month, day, hour, minute, second, tzinfo=utc.UTC())
       hours, minutes, seconds = [int(i) for i in m.groups()[8:11]]
       duration = datetime.timedelta(hours=hours, minutes=minutes, seconds=seconds)
-      tracks.append(Track(count, index, _datetime, duration))
+      tracks.append(Track(count, index, _datetime, duration, igc_lambda(self, index)))
     date, index = None, 0
     for track in reversed(tracks):
       if track.datetime.date() == date:
 	index += 1
       else:
 	index = 1
-      # FIXME calculate manufacturer code
-      track.igc_filename = '%s-XXX-%s-%02d.IGC' % (track.datetime.strftime('%Y-%m-%d'), self.serial_number, index)
+      track.igc_filename = '%s-%s-%s-%02d.IGC' % (track.datetime.strftime('%Y-%m-%d'), self.manufacturer[1], self.serial_number, index)
       date = track.datetime.date()
     return tracks
 
@@ -308,18 +317,17 @@ class Flytec:
       self.zero('PBRWPX,')
 
   def __getattr__(self, attr):
-    if attr == 'instrument':
-      if not self.__dict__.has_key('_snp'): self._snp = self.pbrsnp()
-      return self._snp.instrument
+    if attr == 'snp':
+      self.snp = self.pbrsnp()
+      return self.snp
+    elif attr == 'instrument':
+      return self.snp.instrument
     elif attr == 'pilot_name':
-      if not self.__dict__.has_key('_snp'): self._snp = self.pbrsnp()
-      return self._snp.pilot_name.strip()
+      return self.snp.pilot_name.strip()
     elif attr == 'serial_number':
-      if not self.__dict__.has_key('_snp'): self._snp = self.pbrsnp()
-      return re.compile(r'\A0+').sub('', self._snp.serial_number)
+      return re.compile(r'\A0+').sub('', self.snp.serial_number)
     elif attr == 'software_version':
-      if not self.__dict__.has_key('_snp'): self._snp = self.pbrsnp()
-      return self._snp.software_version
+      return self.snp.software_version
     elif attr == 'manufacturer':
       return MANUFACTURER[self.instrument]
     else:
