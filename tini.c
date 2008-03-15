@@ -98,8 +98,7 @@ typedef struct {
     FILE *file;
     int percentage;
     struct tm tm;
-    int _sc_clk_tck;
-    clock_t clock;
+    struct timeval timeval;
     int remaining_sec;
 } download_data_t;
 
@@ -115,14 +114,13 @@ static void download_callback(void *data, const char *line)
 	    percentage = 0;
 	else if (percentage > 99)
 	    percentage = 99;
-	struct tms tms;
-	clock_t clock = times(&tms);
-	if (clock == (clock_t) -1)
-	    DIE("times", errno);
-	int divisor = download_data->_sc_clk_tck * (download_data->track->time - time);
+	struct timeval timeval;
+	if (gettimeofday(&timeval, 0) == -1)
+	    DIE("gettimeofday", errno);
+	int divisor = download_data->track->time - time;
 	if (divisor == 0)
 	    divisor = 1;
-	int remaining_sec = ((clock - download_data->clock) * (time - download_data->track->time - download_data->track->duration) + download_data->_sc_clk_tck / 2) / divisor;
+	int remaining_sec = (timeval.tv_sec - download_data->timeval.tv_sec) * (time - download_data->track->time - download_data->track->duration) / divisor;
 	if (remaining_sec < 1)
 	    remaining_sec = 1;
 	else if (remaining_sec > 99 * 60 + 59)
@@ -158,27 +156,22 @@ static void tini_download(flytec_t *flytec, set_t *indexes, const char *manufact
 	download_data.file = fopen(track->igc_filename, "w");
 	if (!download_data.file)
 	    error("fopen: %s: %s", track->igc_filename, strerror(errno));
-	download_data._sc_clk_tck = sysconf(_SC_CLK_TCK);
-	if (download_data._sc_clk_tck == -1)
-	    DIE("sysconf", errno);
-	struct tms tms;
-	download_data.clock = times(&tms);
-	if (download_data.clock == (clock_t) -1)
-	    DIE("times", errno);
+	if (gettimeofday(&download_data.timeval, 0) == -1)
+	    DIE("gettimeofday", errno);
 	if (!quiet)
 	    fprintf(stderr, "  0%%           ");
 	flytec_pbrtr(flytec, track, download_callback, &download_data);
 	if (fclose(download_data.file) == EOF)
 	    DIE("fclose", errno);
 	if (!quiet) {
-	    struct tms tms;
-	    clock_t clock = times(&tms);
-	    if (clock == (clock_t) -1)
-		DIE("times", errno);
-	    int sec = (clock - download_data.clock + download_data._sc_clk_tck / 2) / download_data._sc_clk_tck;
+	    struct timeval timeval;
+	    if (gettimeofday(&timeval, 0) == -1)
+		DIE("gettimeofday", errno);
+	    int sec = timeval.tv_sec - download_data.timeval.tv_sec;
 	    if (sec > 99 * 60 + 59)
 		sec = 99 * 60 + 59;
-	    fprintf(stderr, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b100%%  %02d:%02d    \n", sec / 60, sec % 60);
+	    if (sec > 3)
+		fprintf(stderr, "\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b100%%  %02d:%02d    \n", sec / 60, sec % 60);
 	}
 	++count;
     }
