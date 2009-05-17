@@ -10,12 +10,14 @@ flight recorders.  Its goal is to be simple, functional and portable with no
 external dependencies.
 
 The following flight recorders (FRs) are supported:
-    Brauniger Galileo
     Brauniger Compeo
-    Brauniger Competino
     Brauniger Compeo+
+    Brauniger Competino
+    Brauniger Competino+
+    Brauniger Galileo
     Flytec 5020
     FLytec 5030
+    Flytec 6020
     FLytec 6030
 
 
